@@ -1,0 +1,23 @@
+{
+  "name": "ontimepay",
+  "version": "5.0.0",
+  "description": "OnTimePay \u2014 buy-now, undo-after-delivery fintech backend",
+  "private": true,
+  "workspaces": [
+    "services/api",
+    "services/webhook",
+    "services/worker",
+    "services/admin",
+    "shared"
+  ],
+  "scripts": {
+    "api": "node services/api/api.js",
+    "webhook": "node services/webhook/webhook.js",
+    "worker": "node services/worker/worker.js",
+    "admin": "node services/admin/admin.js",
+    "migrate": "psql $DATABASE_URL -f migrations/001_initial.sql"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
