@@ -1,0 +1,62 @@
+# railway.toml — Multi-service deployment for OnTimePay v5
+# Each service runs independently and can be scaled separately.
+# Deploy with: railway up
+
+[build]
+builder = "nixpacks"
+
+# ── API Service ───────────────────────────────────────────────────────────────
+# Public-facing. Handles auth, users, transactions, undo requests.
+# Can be horizontally scaled (stateless).
+[[services]]
+name        = "ontimepay-api"
+startCommand = "node services/api/api.js"
+
+[services.deploy]
+healthcheckPath    = "/health"
+healthcheckTimeout = 10
+restartPolicyType  = "on_failure"
+restartPolicyMaxRetries = 3
+
+[services.networking]
+# Expose publicly via Railway's auto-generated domain
+# or attach a custom domain
+
+# ── Webhook Service ───────────────────────────────────────────────────────────
+# Handles Stripe JIT auth (LATENCY-CRITICAL) + AfterShip delivery events.
+# Kept lean and separate so it never contends with API traffic.
+# Configure Stripe webhook URL to: https://webhook.yourdomain.com/webhooks/stripe
+[[services]]
+name        = "ontimepay-webhook"
+startCommand = "node services/webhook/webhook.js"
+
+[services.deploy]
+healthcheckPath    = "/health"
+healthcheckTimeout = 5   # tighter — this service must stay healthy
+restartPolicyType  = "on_failure"
+restartPolicyMaxRetries = 5
+
+# ── Worker Service ────────────────────────────────────────────────────────────
+# Processes all background jobs: payouts, settlements, reconciliation, cleanup.
+# Run as a SINGLE instance unless you've tested SKIP LOCKED under your load.
+# Does NOT need a public domain — only the health port is exposed.
+[[services]]
+name        = "ontimepay-worker"
+startCommand = "node services/worker/worker.js"
+
+[services.deploy]
+healthcheckPath    = "/health"
+healthcheckTimeout = 10
+restartPolicyType  = "always"   # worker should always be running
+
+# ── Admin Service ─────────────────────────────────────────────────────────────
+# Internal ops tooling. MUST be protected behind Railway's private networking
+# or an IP allowlist. Never expose publicly without additional auth.
+[[services]]
+name        = "ontimepay-admin"
+startCommand = "node services/admin/admin.js"
+
+[services.deploy]
+healthcheckPath    = "/health"
+healthcheckTimeout = 10
+restartPolicyType  = "on_failure"
